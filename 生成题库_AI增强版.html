@@ -606,7 +606,7 @@ dz.addEventListener('dragleave',function(){dz.classList.remove('dragover')});
 dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files[0])hdlFile(e.dataTransfer.files[0])});
 dz.addEventListener('click',function(e){if(e.target.tagName!=='INPUT'&&e.target.tagName!=='BUTTON')document.getElementById('fileInput').click()});
 document.getElementById('fileInput').addEventListener('change',function(e){if(e.target.files[0])hdlFile(e.target.files[0]);e.target.value=''});
-document.getElementById('txtInput').addEventListener('input',function(){clearTimeout(_txtTim);var me=this;_txtTim=setTimeout(function(){var qs=aP(me.value);if(qs.length){_pend=qs;setInfo('解析出 '+qs.length+' 题，点击生成','ok')}else{_pend=[];setInfo('','')};
+document.getElementById('txtInput').addEventListener('input',function(){clearTimeout(_txtTim);var me=this;_txtTim=setTimeout(function(){var qs=aP(me.value);if(qs.length){_pend=qs;setInfo('解析出 '+qs.length+' 题，点击生成','ok')}else{_pend=[];setInfo('','')}},400)});
 document.getElementById('btnGen').addEventListener('click',genQ);
 document.getElementById('btnReset').addEventListener('click',rstD);
 
