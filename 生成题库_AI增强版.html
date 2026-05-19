@@ -148,15 +148,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft Y
         <div id="fname" style="color:var(--primary);margin-top:4px;display:none"></div>
       </div>
       <div class="import-text">
-        <textarea id="txtInput" placeholder="或手动粘贴，格式：题目 | 选项A | 选项B | 选项C | 选项D | 答案"></textarea>
+        <textarea id="txtInput" placeholder="告诉 AI 你想考什么，比如：&#10;'出10道高中物理力学选择题，中等难度'&#10;&#10;也可直接粘贴已有题目"></textarea>
       </div>
     </div>
     <div class="import-info" id="importInfo">
-      <span id="infoMsg">拖入文件或粘贴题目后，点击"生成题库"</span>
+      <span id="infoMsg">描述考试要求 → AI 生成考题，或拖入文件/粘贴已有题目</span>
     </div>
     <div class="import-row">
-      <button class="btn btn-pri" id="btnGen">⚡ 生成题库</button>
-      <button class="btn btn-out" id="btnAIReformat" style="display:none">🤖 AI 重新排版</button>
+      <button class="btn btn-pri" id="btnAIGen">🤖 AI 生成考题</button>
+      <button class="btn btn-out" id="btnGen">📋 手动生成</button>
       <button class="btn btn-out" id="btnReset">恢复默认</button>
     </div>
   </div>
@@ -606,7 +606,7 @@ dz.addEventListener('dragleave',function(){dz.classList.remove('dragover')});
 dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files[0])hdlFile(e.dataTransfer.files[0])});
 dz.addEventListener('click',function(e){if(e.target.tagName!=='INPUT'&&e.target.tagName!=='BUTTON')document.getElementById('fileInput').click()});
 document.getElementById('fileInput').addEventListener('change',function(e){if(e.target.files[0])hdlFile(e.target.files[0]);e.target.value=''});
-document.getElementById('txtInput').addEventListener('input',function(){clearTimeout(_txtTim);var me=this;_txtTim=setTimeout(function(){var qs=aP(me.value);if(qs.length){_pend=qs;setInfo('解析出 '+qs.length+' 题，点击生成','ok')}else{_pend=[];setInfo('','')};var t=me.value.trim();document.getElementById('btnAIReformat').style.display=t&&(!qs.length||qs.length<3)?'inline-block':'none'},400)});
+document.getElementById('txtInput').addEventListener('input',function(){clearTimeout(_txtTim);var me=this;_txtTim=setTimeout(function(){var qs=aP(me.value);if(qs.length){_pend=qs;setInfo('解析出 '+qs.length+' 题，点击生成','ok')}else{_pend=[];setInfo('','')};
 document.getElementById('btnGen').addEventListener('click',genQ);
 document.getElementById('btnReset').addEventListener('click',rstD);
 
@@ -643,17 +643,17 @@ document.getElementById('aiModal').addEventListener('click',function(e){
   if(e.target===this)this.style.display='none';
 });
 
-// AI 重新排版
-document.getElementById('btnAIReformat').addEventListener('click',async function(){
+// AI 生成考题
+document.getElementById('btnAIGen').addEventListener('click',async function(){
   var txt=document.getElementById('txtInput').value.trim();
-  if(!txt){setInfo('请先在文本框中粘贴题目','err');return}
+  if(!txt){setInfo('请描述你想考的题目类型','err');return}
   if(!apiCfg.key){setInfo('请先点击 ⚙️ 配置 API Key','err');document.getElementById('btnAIGear').click();return}
   var btn=this;
-  btn.disabled=true;btn.textContent='⏳ AI 排版中...';
-  setInfo('正在调用 AI 排版...','');
+  btn.disabled=true;btn.textContent='⏳ AI 出题中...';
+  setInfo('正在调用 AI 出题...','');
   try{
     var url=apiCfg.base.replace(/\/+$/,'')+'/v1/chat/completions';
-    var prompt='你是一个题目格式化专家。请将以下原始题目整理成标准格式，每行一题，严格按照以下格式：\n\n题目文字 | 选项A | 选项B | 选项C | 选项D | 答案字母\n\n规则：\n1. 保留原题目的完整意思，不要修改题目内容\n2. 选项最多4个，不足4个的留空（保留 | 分隔符）\n3. 答案用字母 A/B/C/D 表示\n4. 如果是判断题，选项为"正确"和"错误"，答案填A(正确)或B(错误)\n5. 如果是多选题且答案有多个，答案字母连写如"ABC"\n6. 只输出格式化后的内容，不要任何解释、不要编号\n7. 如果某题无法识别，在该行写：无法识别 | 原题内容\n\n原始题目：\n'+txt;
+    var prompt='你是一个专业出题老师。请根据用户描述的考试要求生成题目。严格按照以下格式每行一题：\n\n题目文字 | 选项A | 选项B | 选项C | 选项D | 答案字母\n\n规则：\n1. 题目紧扣用户描述的知识范围和难度\n2. 如果用户指定了数量，严格按要求生成；未指定则默认10道\n3. 每道题4个选项，只有1个正确答案\n4. 答案用字母 A/B/C/D 表示\n5. 如果是判断题，选项为"正确"和"错误"，答案A=正确 B=错误\n6. 只输出格式化内容，不要编号、不要任何解释、不要多余文字\n7. 题目中可以包含 <img> 图片链接来配图（如有需要）\n\n用户要求：\n'+txt;
     var resp=await fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiCfg.key},
@@ -688,7 +688,7 @@ document.getElementById('btnAIReformat').addEventListener('click',async function
     }
     showPreview(aiQs,unrecognized);
   }catch(e){setInfo('❌ AI 调用失败：'+e.message,'err')}
-  btn.disabled=false;btn.textContent='🤖 AI 重新排版';
+  btn.disabled=false;btn.textContent='🤖 AI 生成考题';
 });
 
 function showPreview(qs,unrecognized){
@@ -733,8 +733,7 @@ document.getElementById('btnPreviewConfirm').addEventListener('click',function()
   localStorage.setItem('qq',JSON.stringify(QQ));
   _pend=[];document.getElementById('fname').style.display='none';
   document.getElementById('txtInput').value='';
-  document.getElementById('btnAIReformat').style.display='none';
-  setInfo('✅ AI 排版完成，已导入 '+QQ.length+' 道题！','ok');
+  setInfo('✅ AI 出题完成，已导入 '+QQ.length+' 道题！','ok');
   st.ord=ord();st.idx=0;st.sub=false;st.fin=false;
   st.sel={};st.res={};st.qst={};
   rA();
