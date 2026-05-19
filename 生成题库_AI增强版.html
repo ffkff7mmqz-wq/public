@@ -449,7 +449,7 @@ function rC(){
   var qid=cq();if(qid===undefined){sF();return}
   var q=gbi(qid),total=st.ord.length,pos=st.idx+1;
   document.getElementById('qNum').textContent='第 '+pos+' 题 / 共 '+total+' 题';
-  document.getElementById('qText').textContent=q.q;
+  document.getElementById('qText').innerHTML=q.q;
   var sel=st.sel[qid],sub=st.sub,isMulti=Array.isArray(q.ans);
   function inArr(a,v){return a&&a.indexOf&&a.indexOf(v)>=0}
   document.getElementById('options').innerHTML=q.opt.map(function(o,i){
