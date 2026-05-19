@@ -148,15 +148,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft Y
         <div id="fname" style="color:var(--primary);margin-top:4px;display:none"></div>
       </div>
       <div class="import-text">
-        <textarea id="txtInput" placeholder="告诉 AI 你想考什么，比如：&#10;'出10道高中物理力学选择题，中等难度'&#10;&#10;也可直接粘贴已有题目"></textarea>
+        <textarea id="txtInput" placeholder="粘贴任意格式的题目，AI 自动识别整理&#10;&#10;例：1.中国的首都是？A.北京 B.上海 C.广州 D.深圳 答案：A"></textarea>
       </div>
     </div>
     <div class="import-info" id="importInfo">
-      <span id="infoMsg">描述考试要求 → AI 生成考题，或拖入文件/粘贴已有题目</span>
+      <span id="infoMsg">粘贴题目后点击 AI 识别生成，或拖入 .xlsx/.docx/.txt 文件</span>
     </div>
     <div class="import-row">
-      <button class="btn btn-pri" id="btnAIGen">🤖 AI 生成考题</button>
-      <button class="btn btn-out" id="btnGen">📋 手动生成</button>
+      <button class="btn btn-pri" id="btnAIGen">🤖 AI 识别生成</button>
+      <button class="btn btn-out" id="btnGen">📋 手动解析</button>
       <button class="btn btn-out" id="btnReset">恢复默认</button>
     </div>
   </div>
@@ -643,17 +643,17 @@ document.getElementById('aiModal').addEventListener('click',function(e){
   if(e.target===this)this.style.display='none';
 });
 
-// AI 生成考题
+// AI 识别生成
 document.getElementById('btnAIGen').addEventListener('click',async function(){
   var txt=document.getElementById('txtInput').value.trim();
-  if(!txt){setInfo('请描述你想考的题目类型','err');return}
+  if(!txt){setInfo('请先粘贴题目内容','err');return}
   if(!apiCfg.key){setInfo('请先点击 ⚙️ 配置 API Key','err');document.getElementById('btnAIGear').click();return}
   var btn=this;
-  btn.disabled=true;btn.textContent='⏳ AI 出题中...';
-  setInfo('正在调用 AI 出题...','');
+  btn.disabled=true;btn.textContent='⏳ AI 识别中...';
+  setInfo('正在调用 AI 识别整理...','');
   try{
     var url=apiCfg.base.replace(/\/+$/,'')+'/v1/chat/completions';
-    var prompt='你是一个专业出题老师。请根据用户描述的考试要求生成题目。严格按照以下格式每行一题：\n\n题目文字 | 选项A | 选项B | 选项C | 选项D | 答案字母\n\n规则：\n1. 题目紧扣用户描述的知识范围和难度\n2. 如果用户指定了数量，严格按要求生成；未指定则默认10道\n3. 每道题4个选项，只有1个正确答案\n4. 答案用字母 A/B/C/D 表示\n5. 如果是判断题，选项为"正确"和"错误"，答案A=正确 B=错误\n6. 只输出格式化内容，不要编号、不要任何解释、不要多余文字\n7. 题目中可以包含 <img> 图片链接来配图（如有需要）\n\n用户要求：\n'+txt;
+    var prompt='你是一个题目格式化专家。请将以下原始题目识别并整理成标准格式，每行一题，严格按照以下格式：\n\n题目文字 | 选项A | 选项B | 选项C | 选项D | 答案字母\n\n规则：\n1. 保留原题目的完整内容，不要改动题目的任何文字\n2. 智能识别题目和选项的对应关系，哪怕格式混乱也要正确配对\n3. 每道题4个选项，如果原文只有2个选项（如判断题），用"正确"/"错误"补全\n4. 答案用字母 A/B/C/D 表示\n5. 判断题答案 A=正确 B=错误\n6. 如果原文没有明确答案，根据常识填入你认为正确的答案\n7. 只输出格式化后的内容，不要任何解释、不要编号、不要多余文字\n8. 如果某段内容确实不像是题目，跳过不输出\n\n原始内容：\n'+txt;
     var resp=await fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiCfg.key},
@@ -688,7 +688,7 @@ document.getElementById('btnAIGen').addEventListener('click',async function(){
     }
     showPreview(aiQs,unrecognized);
   }catch(e){setInfo('❌ AI 调用失败：'+e.message,'err')}
-  btn.disabled=false;btn.textContent='🤖 AI 生成考题';
+  btn.disabled=false;btn.textContent='🤖 AI 识别生成';
 });
 
 function showPreview(qs,unrecognized){
@@ -733,7 +733,7 @@ document.getElementById('btnPreviewConfirm').addEventListener('click',function()
   localStorage.setItem('qq',JSON.stringify(QQ));
   _pend=[];document.getElementById('fname').style.display='none';
   document.getElementById('txtInput').value='';
-  setInfo('✅ AI 出题完成，已导入 '+QQ.length+' 道题！','ok');
+  setInfo('✅ AI 识别完成，已导入 '+QQ.length+' 道题！','ok');
   st.ord=ord();st.idx=0;st.sub=false;st.fin=false;
   st.sel={};st.res={};st.qst={};
   rA();
