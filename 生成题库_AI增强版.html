@@ -148,11 +148,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft Y
         <div id="fname" style="color:var(--primary);margin-top:4px;display:none"></div>
       </div>
       <div class="import-text">
-        <textarea id="txtInput" placeholder="粘贴任意格式的题目，AI 自动识别整理&#10;&#10;例：1.中国的首都是？A.北京 B.上海 C.广州 D.深圳 答案：A"></textarea>
+        <textarea id="txtInput" placeholder="告诉 AI 你想要什么，比如：&#10;'生成20道高中物理力学选择题，中等难度'&#10;&#10;或者直接粘贴已有题目，AI 自动识别整理"></textarea>
       </div>
     </div>
     <div class="import-info" id="importInfo">
-      <span id="infoMsg">粘贴题目后点击 AI 识别生成，或拖入 .xlsx/.docx/.txt 文件</span>
+      <span id="infoMsg">描述考试要求或粘贴题目 → AI 识别生成，也可拖入文件</span>
     </div>
     <div class="import-row">
       <button class="btn btn-pri" id="btnAIGen">🤖 AI 识别生成</button>
@@ -220,7 +220,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft Y
     </div>
     <div class="modal-actions">
       <button class="btn btn-out" id="btnPreviewCancel">取消</button>
-      <button class="btn btn-pri" id="btnPreviewConfirm">✓ 确认导入</button>
+      <button class="btn btn-out" id="btnPreviewImport">📋 导入当前页</button>
+      <button class="btn btn-pri" id="btnPreviewDownload">📥 下载做题页面</button>
     </div>
   </div>
 </div>
@@ -646,14 +647,14 @@ document.getElementById('aiModal').addEventListener('click',function(e){
 // AI 识别生成
 document.getElementById('btnAIGen').addEventListener('click',async function(){
   var txt=document.getElementById('txtInput').value.trim();
-  if(!txt){setInfo('请先粘贴题目内容','err');return}
+  if(!txt){setInfo('请描述考试要求或粘贴题目内容','err');return}
   if(!apiCfg.key){setInfo('请先点击 ⚙️ 配置 API Key','err');document.getElementById('btnAIGear').click();return}
   var btn=this;
   btn.disabled=true;btn.textContent='⏳ AI 识别中...';
   setInfo('正在调用 AI 识别整理...','');
   try{
     var url=apiCfg.base.replace(/\/+$/,'')+'/v1/chat/completions';
-    var prompt='你是一个题目格式化专家。请将以下原始题目识别并整理成标准格式，每行一题，严格按照以下格式：\n\n题目文字 | 选项A | 选项B | 选项C | 选项D | 答案字母\n\n规则：\n1. 保留原题目的完整内容，不要改动题目的任何文字\n2. 智能识别题目和选项的对应关系，哪怕格式混乱也要正确配对\n3. 每道题4个选项，如果原文只有2个选项（如判断题），用"正确"/"错误"补全\n4. 答案用字母 A/B/C/D 表示\n5. 判断题答案 A=正确 B=错误\n6. 如果原文没有明确答案，根据常识填入你认为正确的答案\n7. 只输出格式化后的内容，不要任何解释、不要编号、不要多余文字\n8. 如果某段内容确实不像是题目，跳过不输出\n\n原始内容：\n'+txt;
+    var prompt='你是一个智能出题助手。请根据用户输入判断意图并处理：\n\n如果用户输入的是"题目列表"（包含具体题目和选项），请识别并整理成标准格式。\n如果用户输入的是"考试要求"（描述了科目、题型、数量等），请按要求生成题目。\n\n输出格式每行一题：\n题目文字 | 选项A | 选项B | 选项C | 选项D | 答案字母\n\n规则：\n1. 如果是指定数量，严格按要求生成；未指定则默认10道\n2. 题目要有区分度，选项要有迷惑性\n3. 每道题4个选项，只有1个正确答案\n4. 答案用字母 A/B/C/D 表示\n5. 判断题选项为"正确"和"错误"，答案A=正确 B=错误\n6. 只输出格式化内容，不要编号、不要任何解释、不要多余文字\n7. 题目中可以包含 <img> 图片链接来配图\n\n用户输入：\n'+txt;
     var resp=await fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiCfg.key},
@@ -725,20 +726,87 @@ document.getElementById('btnPreviewCancel').addEventListener('click',function(){
   document.getElementById('previewModal').style.display='none';
   window._aiPreviewQs=null;
 });
-document.getElementById('btnPreviewConfirm').addEventListener('click',function(){
+
+// 导入当前页面
+document.getElementById('btnPreviewImport').addEventListener('click',function(){
   var qs=window._aiPreviewQs;
-  if(!qs||!qs.length){setInfo('没有可导入的题目','err');document.getElementById('previewModal').style.display='none';return}
+  if(!qs||!qs.length){setInfo('没有可导入的题目','err');return}
   document.getElementById('previewModal').style.display='none';
   QQ=qs.map(function(q,i){return {id:i+1,q:q.q,opt:q.opt,ans:q.ans}});
   localStorage.setItem('qq',JSON.stringify(QQ));
   _pend=[];document.getElementById('fname').style.display='none';
   document.getElementById('txtInput').value='';
-  setInfo('✅ AI 识别完成，已导入 '+QQ.length+' 道题！','ok');
+  setInfo('✅ 已导入 '+QQ.length+' 道题！','ok');
   st.ord=ord();st.idx=0;st.sub=false;st.fin=false;
   st.sel={};st.res={};st.qst={};
   rA();
   window._aiPreviewQs=null;
 });
+
+// 下载独立做题页面
+document.getElementById('btnPreviewDownload').addEventListener('click',function(){
+  var qs=window._aiPreviewQs;
+  if(!qs||!qs.length){setInfo('没有可下载的题目','err');return}
+  downloadQuiz(qs);
+});
+
+function downloadQuiz(qs){
+  var dsJson=JSON.stringify(qs.map(function(q,i){
+    return {id:i+1,q:q.q,opt:q.opt.slice(0,4),ans:Array.isArray(q.ans)?q.ans:q.ans}
+  }));
+  var html='<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>在线答题</title>\n<style>\n'+document.querySelector('style').textContent+'\n</style>\n</head>\n<body>\n<div class="app">\n  <div class="hd">\n    <h1>在线答题</h1>\n    <div class="fill"></div>\n    <div class="mode-group" id="modeGroup">\n      <button class="mode-btn active" data-m="sequential">顺序做题</button>\n      <button class="mode-btn" data-m="shuffle">随机打乱</button>\n      <button class="mode-btn" data-m="review">错题重做</button>\n    </div>\n  </div>\n  <div class="main">\n    <div class="sidebar" id="sidebar"></div>\n    <div class="content" id="content">\n      <div class="q-header" id="qNum"></div>\n      <div class="q-text" id="qText"></div>\n      <div class="options" id="options"></div>\n      <div class="btns">\n        <button class="btn btn-pri" id="btnSubmit" disabled>提交本题</button>\n        <button class="btn btn-out" id="btnPrev" disabled>上一题</button>\n        <button class="btn btn-out" id="btnNext">下一题</button>\n      </div>\n      <div class="feedback" id="feedback"></div>\n      <div class="completion" id="completion">\n        <div class="score" id="scoreDisplay"></div>\n        <div class="msg" id="completionMsg"></div>\n        <button class="btn btn-pri" onclick="location.reload()">重新开始</button>\n      </div>\n      <div class="empty-state" id="emptyState">还没有错题，先去答些题吧</div>\n    </div>\n  </div>\n  <div class="progress-wrap">\n    <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>\n    <div class="progress-text" id="progText">0/0</div>\n  </div>\n</div>\n<script>\nvar DS='+dsJson+';\n'+genQuizJS()+'\n</'+'script>\n</body>\n</html>';
+  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='在线答题_'+qs.length+'题.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  setInfo('✅ 已下载 '+qs.length+' 道题的独立做题页面！','ok');
+}
+
+function genQuizJS(){
+  return [
+    'function ldQ(){try{var r=localStorage.getItem(\'qq\');if(r){var a=JSON.parse(r);if(Array.isArray(a)&&a.length)return a}}catch(e){}return DS.map(function(q){return Object.assign({},q)})}',
+    'var QQ=ldQ(),_adv=null;',
+    'var st={m:\'sequential\',ord:[],idx:0,sel:{},res:{},qst:{},sub:false,fin:false,ws:new Set()};',
+    'function sh(a){var b=[].concat(a);for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t}return b}',
+    'function ord(){if(st.m===\'sequential\')return QQ.map(function(q){return q.id});if(st.m===\'shuffle\')return sh(QQ.map(function(q){return q.id}));if(st.m===\'review\'){var a=[];st.ws.forEach(function(v){a.push(v)});return a}}',
+    'function gbi(id){return QQ.find(function(q){return q.id===id})}',
+    'function cq(){return st.ord[st.idx]}',
+    'function clrT(){if(_adv){clearTimeout(_adv);_adv=null}}',
+    'function ldWS(){try{var r=localStorage.getItem(\'qw\');return r?new Set(JSON.parse(r)):new Set()}catch(e){return new Set()}}',
+    'function svWS(s){try{localStorage.setItem(\'qw\',JSON.stringify([].concat(Array.from(s))))}catch(e){}}',
+    'function rA(){rS();rC();rP();rMB()}',
+    'function rMB(){document.querySelectorAll(\'.mode-btn\').forEach(function(b){b.classList.toggle(\'active\',b.dataset.m===st.m)})}',
+    'function rS(){var sb=document.getElementById(\'sidebar\'),cur=cq();sb.innerHTML=st.ord.map(function(qid,i){var s=st.qst[qid],c=\'num-btn\';if(qid===cur)c+=\' active\';if(s===\'correct\')c+=\' correct\';if(s===\'wrong\')c+=\' wrong\';return \'<button class="\'+c+\'" data-q="\'+qid+\'" data-i="\'+i+\'">\'+(i+1)+\'</button>\'}).join(\'\');requestAnimationFrame(function(){var a=sb.querySelector(\'.num-btn.active\');if(a)a.scrollIntoView({block:\'nearest\',behavior:\'smooth\'})})}',
+    'function rC(){if(!st.ord.length){sE();return}if(st.fin){sF();return}hC();hE();var qid=cq();if(qid===undefined){sF();return}var q=gbi(qid),total=st.ord.length,pos=st.idx+1;document.getElementById(\'qNum\').textContent=\'第 \'+pos+\' 题 / 共 \'+total+\' 题\';document.getElementById(\'qText\').innerHTML=q.q;var sel=st.sel[qid],sub=st.sub,isMulti=Array.isArray(q.ans);function inArr(a,v){return a&&a.indexOf&&a.indexOf(v)>=0}document.getElementById(\'options\').innerHTML=q.opt.map(function(o,i){var c=\'opt\';if(isMulti){if(inArr(sel,i))c+=\' selected\'}else{if(sel===i)c+=\' selected\'}if(sub){if(isMulti&&inArr(q.ans,i))c+=\' correct-reveal\';else if(!isMulti&&i===q.ans)c+=\' correct-reveal\';if(isMulti&&inArr(sel,i)&&!inArr(q.ans,i))c+=\' wrong-reveal\';else if(!isMulti&&i===sel&&i!==q.ans)c+=\' wrong-reveal\'}var ip=isMulti?\'checkbox\':\'radio\';var chk=isMulti?inArr(sel,i):sel===i;return \'<label class="\'+c+\'"><input type="\'+ip+\'" name="o" value="\'+i+\'"\'+(chk?\' checked\':\'\')+(sub?\' disabled\':\'\')+\'><span class="dot"></span><span class="letter">\'+String.fromCharCode(65+i)+\'.</span>\'+o+\'</label>\'}).join(\'\');if(!sub){document.querySelectorAll(\'#options .opt\').forEach(function(o){o.addEventListener(\'click\',function(){var r=o.querySelector(\'input\');if(r&&!r.disabled){if(isMulti){var val=parseInt(r.value);if(!st.sel[qid])st.sel[qid]=[];if(r.checked){if(st.sel[qid].indexOf(val)<0)st.sel[qid].push(val)}else{var idx=st.sel[qid].indexOf(val);if(idx>=0)st.sel[qid].splice(idx,1)}}else{r.checked=true;st.sel[qid]=parseInt(r.value)}uS();rOS(qid)}})})}uS();rF(qid);uN(qid,total)}',
+    'function rOS(qid){var si=st.sel[qid];document.querySelectorAll(\'#options .opt\').forEach(function(o,i){o.classList.toggle(\'selected\',Array.isArray(si)?si.indexOf(i)>=0:si===i)})}',
+    'function uS(){var b=document.getElementById(\'btnSubmit\'),sl=st.sel[cq()],has=Array.isArray(sl)?sl.length>0:sl!==undefined;b.disabled=!has||st.sub;b.textContent=st.sub?\'已提交 ✓\':\'提交本题\'}',
+    'function uN(qid,total){document.getElementById(\'btnPrev\').disabled=st.idx===0;var nb=document.getElementById(\'btnNext\');nb.textContent=st.idx>=total-1&&st.sub?\'查看成绩\':\'下一题\'}',
+    'function rF(qid){var fb=document.getElementById(\'feedback\');fb.className=\'feedback\';fb.style.display=\'none\';if(!st.sub)return;var q=gbi(qid),r=st.res[qid];fb.classList.add(\'show\');if(r===\'correct\'){fb.classList.add(\'success\');fb.innerHTML=\'✓ 回答正确！\'}else{var correctStr=\'\';if(Array.isArray(q.ans)){correctStr=q.ans.map(function(a){return String.fromCharCode(65+a)}).join(\'、\')+\'. \';correctStr+=q.ans.map(function(a){return q.opt[a]}).join(\'；\')}else{correctStr=String.fromCharCode(65+q.ans)+\'. \'+q.opt[q.ans]}fb.classList.add(\'error\');fb.innerHTML=\'✗ 回答错误！正确答案是：<strong>\'+correctStr+\'</strong>\'}}',
+    'function rP(){var total=st.ord.length,ansd=Object.keys(st.res).length,p=total?Math.round(ansd/total*100):0;document.getElementById(\'progFill\').style.width=p+\'%\';document.getElementById(\'progText\').textContent=ansd+\'/\'+total}',
+    'function sF(){[\'qNum\',\'qText\',\'options\',\'feedback\'].forEach(function(id){var el=document.getElementById(id);if(id===\'feedback\'){el.className=\'feedback\';el.style.display=\'none\'}else el.textContent=\'\'});document.getElementById(\'btnSubmit\').disabled=true;document.getElementById(\'btnSubmit\').textContent=\'全部完成\';document.getElementById(\'btnPrev\').disabled=true;document.getElementById(\'btnNext\').textContent=\'重新开始\';var total=st.ord.length,ct=Object.values(st.res).filter(function(r){return r===\'correct\'}).length;document.getElementById(\'scoreDisplay\').textContent=ct+\'/\'+total;var p=total?Math.round(ct/total*100):0,m=p>=80?\'太棒了！\':p>=60?\'还不错！\':\'多练习一下吧！\';document.getElementById(\'completionMsg\').textContent=m;document.getElementById(\'completion\').classList.add(\'show\');document.getElementById(\'progFill\').style.width=\'100%\';document.getElementById(\'progText\').textContent=total+\'/\'+total}',
+    'function hC(){document.getElementById(\'completion\').classList.remove(\'show\')}',
+    'function sE(){hC();[\'qNum\',\'qText\',\'options\'].forEach(function(id){document.getElementById(id).textContent=\'\'});document.getElementById(\'btnSubmit\').disabled=true;document.getElementById(\'btnSubmit\').textContent=\'提交本题\';document.getElementById(\'btnPrev\').disabled=true;document.getElementById(\'btnNext\').textContent=\'下一题\';document.getElementById(\'feedback\').className=\'feedback\';document.getElementById(\'feedback\').style.display=\'none\';document.getElementById(\'emptyState\').classList.add(\'show\')}',
+    'function hE(){document.getElementById(\'emptyState\').classList.remove(\'show\')}',
+    'function arrEq(a,b){if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;var sa=[].concat(a).sort(),sb=[].concat(b).sort();for(var i=0;i<sa.length;i++)if(sa[i]!==sb[i])return false;return true}',
+    'function subA(){if(st.sub)return;var qid=cq();if(qid===undefined)return;var q=gbi(qid),sl=st.sel[qid];if(sl===undefined||sl===null)return;var ok=Array.isArray(q.ans)?arrEq(sl,q.ans):sl===q.ans;st.res[qid]=ok?\'correct\':\'wrong\';st.qst[qid]=ok?\'correct\':\'wrong\';st.sub=true;if(!ok)st.ws.add(qid);else st.ws.delete(qid);svWS(st.ws);rA();if(st.m===\'review\')return;clrT();if(st.idx>=st.ord.length-1){_adv=setTimeout(function(){_adv=null;st.fin=true;rA()},1500)}else{_adv=setTimeout(function(){_adv=null;st.idx++;st.sub=st.res[st.ord[st.idx]]!==undefined;rA()},1500)}}',
+    'function goN(){clrT();if(st.fin){rA2();return}if(st.idx>=st.ord.length-1){if(!st.sub)return;st.fin=true;rA();return}st.idx++;st.sub=st.res[st.ord[st.idx]]!==undefined;rA()}',
+    'function goP(){clrT();if(st.idx<=0)return;st.idx--;st.sub=st.res[st.ord[st.idx]]!==undefined;rA()}',
+    'function goT(qid,i){clrT();st.idx=i;st.fin=false;st.sub=st.res[qid]!==undefined;rA()}',
+    'function swM(m){clrT();if(m===\'review\')st.ws=ldWS();st.m=m;st.ord=ord();st.idx=0;st.sub=false;st.fin=false;st.sel={};st.res={};st.qst={};if(m===\'review\')st.ws.forEach(function(qid){st.qst[qid]=\'wrong\'});rA()}',
+    'function rA2(){clrT();st.ws=ldWS();st.m=\'sequential\';st.ord=ord();st.idx=0;st.sel={};st.res={};st.qst={};st.sub=false;st.fin=false;rA()}',
+    'document.getElementById(\'btnSubmit\').addEventListener(\'click\',subA);',
+    'document.getElementById(\'btnNext\').addEventListener(\'click\',goN);',
+    'document.getElementById(\'btnPrev\').addEventListener(\'click\',goP);',
+    'document.getElementById(\'sidebar\').addEventListener(\'click\',function(e){var b=e.target.closest(\'.num-btn\');if(!b)return;goT(parseInt(b.dataset.q),parseInt(b.dataset.i))});',
+    'document.getElementById(\'modeGroup\').addEventListener(\'click\',function(e){var b=e.target.closest(\'.mode-btn\');if(!b||b.dataset.m===st.m)return;swM(b.dataset.m)});',
+    'st.ws=ldWS();st.ord=ord();rA();'
+  ].join('\n');
+}
+
 document.getElementById('previewModal').addEventListener('click',function(e){
   if(e.target===this){this.style.display='none';window._aiPreviewQs=null}
 });
